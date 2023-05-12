@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use serde::{Serialize, Deserialize};
+use tauri::Manager;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
@@ -40,6 +41,22 @@ fn command_with_object(message: MyMessage) -> MyMessage {
 
 fn main() {
     tauri::Builder::default()
+        .setup(|app| {
+            let _id = app.listen_global("front-to-back", |event| {
+                println!(
+                    "got front-to-back with payload {:?}",
+                    event.payload().unwrap()
+                )
+            });
+            let app_handle = app.app_handle();
+            std::thread::spawn(move || loop {
+                app_handle
+                    .emit_all("back-to-front", "ping frontend".to_string())
+                    .unwrap();
+                std::thread::sleep(std::time::Duration::from_secs(1))
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             greet,
             // simple_command,
